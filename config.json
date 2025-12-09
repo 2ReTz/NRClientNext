@@ -1,8 +1,8 @@
 {
     "current_theme": "light",
     "custom_image_enabled": true,
-    "custom_image_path": "images/linux_e.png",
-    "custom_image_width": 120,
-    "custom_image_height": 80,
-    "custom_image_fit": false
+    "custom_image_path": "images/lost coder.gif",
+    "custom_image_width": 509,
+    "custom_image_height": 400,
+    "custom_image_fit": true
 }

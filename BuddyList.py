@@ -43,9 +43,14 @@ class CustomImagePanel(wx.Panel):
         self.animation_ctrl.Hide()
 
         # Sizer for the scrolled window
+        # Sizer for the scrolled window
         scrolled_sizer = wx.BoxSizer(wx.VERTICAL)
-        scrolled_sizer.Add(self.static_bitmap, 0, wx.ALL, 5)
-        scrolled_sizer.Add(self.animation_ctrl, 0, wx.ALL, 5)
+        # Add stretchable space before
+        scrolled_sizer.AddStretchSpacer(1)
+        scrolled_sizer.Add(self.static_bitmap, 0, wx.ALL | wx.ALIGN_CENTER, 5)
+        scrolled_sizer.Add(self.animation_ctrl, 0, wx.ALL | wx.ALIGN_CENTER, 5)
+        # Add stretchable space after
+        scrolled_sizer.AddStretchSpacer(1)
         self.scrolled_win.SetSizer(scrolled_sizer)
 
         # Main sizer
@@ -74,9 +79,11 @@ class CustomImagePanel(wx.Panel):
                     'height': config.get('custom_image_height', 200),
                     'fit': config.get('custom_image_fit', True)
                 }
+            print(f"[DEBUG] CustomImagePanel.load_config: Loaded config: {self.config}")
         except Exception as e:
             print(f"Error loading custom image config: {e}")
             self.config = {'enabled': False, 'path': '', 'width': 300, 'height': 200, 'fit': True}
+            print(f"[DEBUG] CustomImagePanel.load_config: Using default config: {self.config}")
 
     def save_config(self):
         try:
@@ -91,8 +98,10 @@ class CustomImagePanel(wx.Panel):
             })
             with open('config.json', 'w') as f:
                 json.dump(config, f, indent=4)
+            print(f"[DEBUG] CustomImagePanel.save_config: Saved config: {self.config}")
         except Exception as e:
             print(f"Error saving custom image config: {e}")
+            print(f"[DEBUG] CustomImagePanel.save_config: Failed to save config: {self.config}")
 
     def get_target_size(self, img):
         if self.config['fit']:
@@ -108,15 +117,26 @@ class CustomImagePanel(wx.Panel):
         return width, height
 
     def load_image(self):
+        print(f"[DEBUG] CustomImagePanel.load_image: Starting load with config: enabled={self.config['enabled']}, path='{self.config['path']}'")
+        
         if not self.config['enabled'] or not self.config['path']:
+            print(f"[DEBUG] CustomImagePanel.load_image: Disabled or no path, clearing image")
             self.static_bitmap.SetBitmap(wx.NullBitmap)
             self.animation_ctrl.Stop()
             self.animation_ctrl.Hide()
             self.static_bitmap.Hide()
             return
 
-        if not os.path.exists(self.config['path']):
-            wx.MessageBox(f"Image not found:\n{self.config['path']}", "Error", wx.OK | wx.ICON_ERROR)
+        # Normalize the path and check existence
+        image_path = self.config['path']
+        if not os.path.isabs(image_path):
+            # If it's a relative path, make it relative to the app directory
+            image_path = os.path.join(os.getcwd(), image_path)
+            print(f"[DEBUG] CustomImagePanel.load_image: Normalized path: {image_path}")
+        
+        if not os.path.exists(image_path):
+            print(f"[DEBUG] CustomImagePanel.load_image: File not found: {image_path}")
+            wx.MessageBox(f"Image not found:\n{self.config['path']}\n\nTried: {image_path}", "Error", wx.OK | wx.ICON_ERROR)
             self.static_bitmap.SetBitmap(wx.NullBitmap)
             self.animation_ctrl.Stop()
             self.animation_ctrl.Hide()
@@ -124,10 +144,13 @@ class CustomImagePanel(wx.Panel):
             return
 
         try:
-            _, ext = os.path.splitext(self.config['path'])
+            _, ext = os.path.splitext(image_path)
+            print(f"[DEBUG] CustomImagePanel.load_image: Loading file with extension: {ext}")
+            
             if ext.lower() == '.gif':
-                animation = wx.adv.Animation(self.config['path'])
+                animation = wx.adv.Animation(image_path)
                 if animation.IsOk():
+                    print(f"[DEBUG] CustomImagePanel.load_image: GIF loaded successfully as animation")
                     self.animation_ctrl.SetAnimation(animation)
                     self.animation_ctrl.SetMinSize(animation.GetSize())
                     self.scrolled_win.SetVirtualSize(animation.GetSize())
@@ -135,8 +158,9 @@ class CustomImagePanel(wx.Panel):
                     self.animation_ctrl.Show()
                     self.static_bitmap.Hide()
                 else:
+                    print(f"[DEBUG] CustomImagePanel.load_image: GIF not animated, falling back to static")
                     # Fallback to static load if GIF isn't animated/parsable
-                    img = wx.Image(self.config['path'])
+                    img = wx.Image(image_path)
                     if not img.IsOk():
                         raise Exception("Invalid GIF image")
                     target_width, target_height = self.get_target_size(img)
@@ -150,9 +174,11 @@ class CustomImagePanel(wx.Panel):
                     self.scrolled_win.SetVirtualSize(bitmap.GetWidth(), bitmap.GetHeight())
             else:
                 # Load as static image
-                img = wx.Image(self.config['path'])
+                print(f"[DEBUG] CustomImagePanel.load_image: Loading as static image")
+                img = wx.Image(image_path)
                 if img.IsOk():
                     target_width, target_height = self.get_target_size(img)
+                    print(f"[DEBUG] CustomImagePanel.load_image: Original size: {img.GetWidth()}x{img.GetHeight()}, Target size: {target_width}x{target_height}")
                     if target_width != img.GetWidth() or target_height != img.GetHeight():
                         img = img.Scale(target_width, target_height, wx.IMAGE_QUALITY_HIGH)
                     bitmap = wx.Bitmap(img)
@@ -162,23 +188,28 @@ class CustomImagePanel(wx.Panel):
                     self.animation_ctrl.Hide()
                     # Set virtual size for scrolling
                     self.scrolled_win.SetVirtualSize(bitmap.GetWidth(), bitmap.GetHeight())
+                    print(f"[DEBUG] CustomImagePanel.load_image: Static image loaded and displayed")
                 else:
                     raise Exception("Invalid image")
             self.scrolled_win.Layout()
             self.Layout()
+            print(f"[DEBUG] CustomImagePanel.load_image: Image loading completed successfully")
         except Exception as e:
             print(f"Error loading image {self.config['path']}: {e}")
-            wx.MessageBox(f"Failed to load image: {self.config['path']}\n{e}", "Error", wx.OK | wx.ICON_ERROR)
+            print(f"[DEBUG] CustomImagePanel.load_image: Exception during image loading: {e}")
+            wx.MessageBox(f"Failed to load image: {self.config['path']}\n\nError: {e}", "Error", wx.OK | wx.ICON_ERROR)
             self.static_bitmap.SetBitmap(wx.NullBitmap)
             self.animation_ctrl.Stop()
             self.animation_ctrl.Hide()
 
     def set_image_path(self, path):
+        print(f"[DEBUG] CustomImagePanel.set_image_path: Setting path to '{path}'")
         self.config['path'] = path
         self.save_config()
         self.load_image()
 
     def toggle_enabled(self):
+        print(f"[DEBUG] CustomImagePanel.toggle_enabled: Toggling enabled from {self.config['enabled']} to {not self.config['enabled']}")
         self.config['enabled'] = not self.config['enabled']
         self.save_config()
         self.load_image()
@@ -232,7 +263,7 @@ class CustomImageDialog(wx.Dialog):
         file_box = wx.StaticBox(panel, label="Image File")
         file_sizer = wx.StaticBoxSizer(file_box, wx.HORIZONTAL)
 
-        self.file_tc = wx.TextCtrl(panel, value=self.custom_panel.config['path'])
+        self.file_tc = wx.TextCtrl(panel, value=str(self.custom_panel.config.get('path', '')))
         browse_btn = wx.Button(panel, label="Browse...")
         browse_btn.Bind(wx.EVT_BUTTON, self.OnBrowse)
 
@@ -288,30 +319,58 @@ class CustomImageDialog(wx.Dialog):
         self.fit_cb.Enable(enabled)
 
     def apply_changes(self):
+        print(f"[DEBUG] CustomImageDialog.apply_changes: Applying changes")
         self.custom_panel.config['enabled'] = self.enable_cb.GetValue()
         self.custom_panel.config['path'] = self.file_tc.GetValue()
         self.custom_panel.config['width'] = self.width_spin.GetValue()
         self.custom_panel.config['height'] = self.height_spin.GetValue()
         self.custom_panel.config['fit'] = self.fit_cb.GetValue()
+        print(f"[DEBUG] CustomImageDialog.apply_changes: New config: enabled={self.custom_panel.config['enabled']}, path='{self.custom_panel.config['path']}', width={self.custom_panel.config['width']}, height={self.custom_panel.config['height']}, fit={self.custom_panel.config['fit']}")
         self.custom_panel.save_config()
         self.custom_panel.load_image()
+        print(f"[DEBUG] CustomImageDialog.apply_changes: Changes applied successfully")
 
     def OnBrowse(self, event):
+        print(f"[DEBUG] CustomImageDialog.OnBrowse: Opening file dialog")
         with wx.FileDialog(self, "Choose image file", wildcard="Image files (*.png;*.jpg;*.jpeg;*.bmp;*.gif)|*.png;*.jpg;*.jpeg;*.bmp;*.gif",
                            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as fileDialog:
             if fileDialog.ShowModal() == wx.ID_CANCEL:
+                print(f"[DEBUG] CustomImageDialog.OnBrowse: File dialog cancelled")
                 return
             path = fileDialog.GetPath()
-            self.file_tc.SetValue(path)
+            print(f"[DEBUG] CustomImageDialog.OnBrowse: Selected file (absolute): {path}")
+            
+            # Convert absolute path to relative path if it's within the application directory
+            current_dir = os.getcwd()
+            if path.startswith(current_dir):
+                # Remove the current directory and leading separator to get relative path
+                relative_path = os.path.relpath(path, current_dir)
+                print(f"[DEBUG] CustomImageDialog.OnBrowse: Converted to relative path: {relative_path}")
+                self.file_tc.SetValue(relative_path)
+            else:
+                # Keep absolute path if it's outside the application directory
+                print(f"[DEBUG] CustomImageDialog.OnBrowse: Keeping absolute path (outside app dir)")
+                self.file_tc.SetValue(path)
 
     def OnApply(self, event):
+        print(f"[DEBUG] CustomImageDialog.OnApply: Apply button clicked")
         self.apply_changes()
+        
+        # Force a refresh of the parent layout
+        if self.custom_panel:
+            self.custom_panel.Layout()
+            self.custom_panel.Refresh()
+            self.custom_panel.Update()
+            
         if self.IsModal():
+            print(f"[DEBUG] CustomImageDialog.OnApply: Ending modal with OK")
             self.EndModal(wx.ID_OK)
         else:
+            print(f"[DEBUG] CustomImageDialog.OnApply: Closing dialog")
             self.Close()
 
     def OnCancel(self, event):
+        print(f"[DEBUG] CustomImageDialog.OnCancel: Cancel button clicked")
         self.EndModal(wx.ID_CANCEL)
 
 
