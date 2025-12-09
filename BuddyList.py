@@ -302,9 +302,8 @@ class fmBuddyList(wx.Frame):
         self.SetLabel(CLIWrapper.getLogonInfo())
 
     def _init_popupmenu_(self):
-        for title in menu_titles:
-            menu_title_by_id[wx.Window.NewControlId()] = title
-
+        # Don't pre-generate IDs for standard items here
+        
         addon_menu_items.clear()
         menufile = "menu.def"
         if platform.system() == 'Windows':
@@ -324,12 +323,18 @@ class fmBuddyList(wx.Frame):
 
     def doPopupMenu(self, pt):
         menu = wx.Menu()
-        addon_menu_items_by_id.clear()
-
-        for (itemid, title) in menu_title_by_id.items():
+        
+        # 1. Standard Items: Generate fresh IDs every time
+        menu_title_by_id.clear()
+        for title in menu_titles:
+            itemid = wx.Window.NewControlId()
+            menu_title_by_id[itemid] = title
             item = menu.Append(itemid, title)
             self.Bind(wx.EVT_MENU, self.MenuSelectionCb, item)
 
+        # 2. Addon Items: Generate fresh IDs every time (already doing this, but ensure consistency)
+        addon_menu_items_by_id.clear()
+        
         target = self.item_selected
         if target is not None:
             obj = self._get_item_data(target)
@@ -344,6 +349,7 @@ class fmBuddyList(wx.Frame):
 
         self.tcBuddyList.PopupMenu(menu, pt)
         menu.Destroy()
+
 
     def _get_item_data(self, item):
         data = self.tcBuddyList.GetItemData(item)
