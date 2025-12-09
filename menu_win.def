@@ -1,0 +1,3 @@
+Ping = ping.exe %NRIPAddress%
+Shared Folder = explorer.exe \\%NRIPAddress%
+Remote Desktop = mstsc.exe /v:%NRIPAddress%

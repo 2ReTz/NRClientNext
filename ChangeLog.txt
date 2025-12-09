@@ -1,0 +1,6 @@
+﻿[2010/01/10]
+First Version - Populate computer list
+              - Sign in and Sign out
+              - Custom commands support
+
+

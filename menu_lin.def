@@ -1,0 +1,2 @@
+Ping = xterm -e ping %NRIPAddress%
+Ssh = xterm -e ssh %NRIPAddress%
