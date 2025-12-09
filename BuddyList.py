@@ -369,7 +369,7 @@ class fmBuddyList(wx.Frame):
                     cmd = operation.strip(' ').strip('\n')
                     cmd = cmd.replace('%NRIPAddress%', obj.ipAddress)
                     self.process = wx.Process(self)
-                    wx.Execute(cmd, wx.EXEC_ASYNC | wx.EXEC_NOHIDE, self.process)
+                    wx.Execute(cmd, wx.EXEC_ASYNC, self.process)
 
     def doCLISignIn(self, domain, userName, password):
         if not self.worker:
