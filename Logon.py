@@ -26,58 +26,85 @@ wxID_DLGLOGONTXTUSERNAME = wx.ID_ANY
 
 class dlgLogon(wx.Dialog):
     def _init_ctrls(self, prnt):
-        # generated method, don't edit
         wx.Dialog.__init__(self, id=wxID_DLGLOGON, name='dlgLogon', parent=prnt,
-              pos=wx.Point(499, 300), size=wx.Size(313, 217),
-              style=wx.DEFAULT_DIALOG_STYLE,
+              pos=wx.DefaultPosition, size=wx.DefaultSize,
+              style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER,
               title='NeoRouter Network Explorer')
-        self.SetClientSize(wx.Size(305, 183))
-        self.SetToolTip('')
-        self.SetWindowVariant(wx.WINDOW_VARIANT_NORMAL)
-
+        
+        # Main Sizer
+        mainSizer = wx.BoxSizer(wx.VERTICAL)
+        
         self.sbSignIn = wx.StaticBox(id=wxID_DLGLOGONSBSIGNIN, label='Sign In',
-              name='sbSignIn', parent=self, pos=wx.Point(8, 8),
-              size=wx.Size(288, 128), style=0)
+              name='sbSignIn', parent=self, style=0)
+        
+        # Static Box Sizer to contain the form inside the StaticBox
+        sbSizer = wx.StaticBoxSizer(self.sbSignIn, wx.VERTICAL)
+        
+        # Grid Sizer for Form (Label + Input pairs)
+        gridSizer = wx.FlexGridSizer(rows=3, cols=2, vgap=10, hgap=10)
+        gridSizer.AddGrowableCol(1) # Second column (inputs) grows
 
+        # Row 1: User Name
         self.lblUserName = wx.StaticText(id=wxID_DLGLOGONLBLUSERNAME,
-              label='User name:', name='lblUserName', parent=self,
-              pos=wx.Point(24, 32), size=wx.Size(55, 13), style=0)
-
-        self.lblPassword = wx.StaticText(id=wxID_DLGLOGONLBLPASSWORD,
-              label='Password:', name='lblPassword', parent=self,
-              pos=wx.Point(24, 64), size=wx.Size(50, 13), style=0)
-
-        self.lblLogonto = wx.StaticText(id=wxID_DLGLOGONLBLLOGONTO,
-              label='Log on to:', name='lblLogonto', parent=self,
-              pos=wx.Point(24, 96), size=wx.Size(49, 13), style=0)
-
+              label='User name:', name='lblUserName', parent=self, style=0)
         self.txtUserName = wx.TextCtrl(id=wxID_DLGLOGONTXTUSERNAME,
-              name='txtUserName', parent=self, pos=wx.Point(96, 32),
-              size=wx.Size(184, 21), style=0, value='')
+              name='txtUserName', parent=self, style=0, value='')
         self.txtUserName.SetToolTip('User Name')
+        
+        gridSizer.Add(self.lblUserName, 0, wx.ALIGN_CENTER_VERTICAL)
+        gridSizer.Add(self.txtUserName, 1, wx.EXPAND)
 
+        # Row 2: Password
+        self.lblPassword = wx.StaticText(id=wxID_DLGLOGONLBLPASSWORD,
+              label='Password:', name='lblPassword', parent=self, style=0)
         self.txtPassword = wx.TextCtrl(id=wxID_DLGLOGONTXTPASSWORD,
-              name='txtPassword', parent=self, pos=wx.Point(96, 64),
-              size=wx.Size(184, 21), style=wx.TE_PASSWORD, value='')
+              name='txtPassword', parent=self, style=wx.TE_PASSWORD, value='')
         self.txtPassword.SetToolTip('Password')
 
+        gridSizer.Add(self.lblPassword, 0, wx.ALIGN_CENTER_VERTICAL)
+        gridSizer.Add(self.txtPassword, 1, wx.EXPAND)
+
+        # Row 3: Log on to (Domain)
+        self.lblLogonto = wx.StaticText(id=wxID_DLGLOGONLBLLOGONTO,
+              label='Log on to:', name='lblLogonto', parent=self, style=0)
         self.txtLogonto = wx.TextCtrl(id=wxID_DLGLOGONTXTLOGONTO,
-              name='txtLogonto', parent=self, pos=wx.Point(96, 96),
-              size=wx.Size(184, 21), style=0, value='')
+              name='txtLogonto', parent=self, style=0, value='')
         self.txtLogonto.SetToolTip('Domain Name')
 
+        gridSizer.Add(self.lblLogonto, 0, wx.ALIGN_CENTER_VERTICAL)
+        gridSizer.Add(self.txtLogonto, 1, wx.EXPAND)
+
+        # Add Grid to StaticBoxSizer
+        sbSizer.Add(gridSizer, 1, wx.EXPAND | wx.ALL, 10)
+        
+        # Add StaticBoxSizer to Main Sizer
+        mainSizer.Add(sbSizer, 1, wx.EXPAND | wx.ALL, 10)
+
+        # Button Sizer
+        btnSizer = wx.BoxSizer(wx.HORIZONTAL)
+
         self.btnSignIn = wx.Button(id=wxID_DLGLOGONBTNSIGNIN, label='Sign In',
-              name='btnSignIn', parent=self, pos=wx.Point(64, 152),
-              size=wx.Size(75, 23), style=0)
+              name='btnSignIn', parent=self, style=0)
         self.btnSignIn.SetDefault()
         self.btnSignIn.Bind(wx.EVT_BUTTON, self.OnBtnSignInButton,
               id=wxID_DLGLOGONBTNSIGNIN)
 
         self.btnCancel = wx.Button(id=wxID_DLGLOGONBTNCANCEL, label='Cancel',
-              name='btnCancel', parent=self, pos=wx.Point(176, 152),
-              size=wx.Size(75, 23), style=0)
+              name='btnCancel', parent=self, style=0)
         self.btnCancel.Bind(wx.EVT_BUTTON, self.OnBtnCancelButton,
               id=wxID_DLGLOGONBTNCANCEL)
+              
+        btnSizer.Add(self.btnSignIn, 0, wx.RIGHT, 10)
+        btnSizer.Add(self.btnCancel, 0)
+
+        # Add Button Sizer to Main Sizer
+        mainSizer.Add(btnSizer, 0, wx.ALIGN_RIGHT | wx.RIGHT | wx.BOTTOM, 10)
+
+        self.SetSizer(mainSizer)
+        mainSizer.Fit(self)
+        self.Layout()
+        self.Center()
+
 
     def __init__(self, parent):
         self.userName = ''

@@ -121,41 +121,54 @@ class fmBuddyList(wx.Frame):
 
     def _init_ctrls(self, prnt):
         wx.Frame.__init__(self, id=wxID_FMBUDDYLIST, name='fmBuddyList',
-              parent=prnt, pos=wx.Point(576, 335), size=wx.Size(202, 337),
+              parent=prnt, pos=wx.DefaultPosition, size=wx.Size(300, 500),
               style=wx.DEFAULT_FRAME_STYLE, title='NeoRouter Network Explorer')
         self._init_utils()
-        self.SetClientSize(wx.Size(194, 303))
+        
+        # Menu Bar
         self.SetMenuBar(self.mbMenu)
         self.SetStatusBarPane(0)
         self.SetIcon(wx.Icon('images/NRLogo.ico', wx.BITMAP_TYPE_ICO))
         self.SetHelpText('')
         self.Bind(wx.EVT_CLOSE, self.OnFmBuddyListClose)
 
+        # Toolbar
         self.tbBuddyList = wx.ToolBar(id=wxID_FMBUDDYLISTTBBUDDYLIST,
-              name='tbBuddyList', parent=self, pos=wx.Point(0, 0),
-              size=wx.Size(194, 27), style=wx.TB_HORIZONTAL | wx.NO_BORDER)
+              name='tbBuddyList', parent=self,
+              style=wx.TB_HORIZONTAL | wx.NO_BORDER)
         self.tbBuddyList.SetToolPacking(1)
         self.tbBuddyList.SetToolTip('')
         self.SetToolBar(self.tbBuddyList)
 
+        # Status Bar
         self.sbBuddyList = wx.StatusBar(id=wxID_FMBUDDYLISTSBBUDDYLIST,
               name='sbBuddyList', parent=self, style=wx.STB_SIZEGRIP)
         self.sbBuddyList.SetToolTip('')
         self.SetStatusBar(self.sbBuddyList)
 
+        # Main Panel
         self.pnlBuddyList = wx.Panel(id=wxID_FMBUDDYLISTPNLBUDDYLIST,
-              name='pnlBuddyList', parent=self, pos=wx.Point(0, 27),
-              size=wx.Size(194, 234), style=wx.TAB_TRAVERSAL)
+              name='pnlBuddyList', parent=self, pos=wx.DefaultPosition,
+              size=wx.DefaultSize, style=wx.TAB_TRAVERSAL)
         self.pnlBuddyList.SetToolTip('')
 
+        # Tree Control
         self.tcBuddyList = wx.TreeCtrl(id=wxID_FMBUDDYLISTTCBUDDYLIST,
-              name='tcBuddyList', parent=self.pnlBuddyList, pos=wx.Point(0, 0),
-              size=wx.Size(194, 234),
-              style=wx.TR_HIDE_ROOT | wx.TR_NO_LINES)
+              name='tcBuddyList', parent=self.pnlBuddyList, pos=wx.DefaultPosition,
+              size=wx.DefaultSize,
+              style=wx.TR_HIDE_ROOT | wx.TR_NO_LINES | wx.TR_FULL_ROW_HIGHLIGHT)
         self.tcBuddyList.SetToolTip('')
 
         self._init_coll_tbBuddyList_Tools(self.tbBuddyList)
         self._init_sizers()
+        
+        # Ensure Panel fills Frame
+        frameSizer = wx.BoxSizer(wx.VERTICAL)
+        frameSizer.Add(self.pnlBuddyList, 1, wx.EXPAND)
+        self.SetSizer(frameSizer)
+        self.Layout()
+        self.Center()
+
 
     def __init__(self, parent):
         self._init_ctrls(parent)
