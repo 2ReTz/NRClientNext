@@ -113,5 +113,10 @@ class ThemeManager:
         statusbar.SetForegroundColour(wx.Colour(theme['fg_color']))
         statusbar.Refresh()
 
+    def apply_theme_to_custom_image_panel(self, panel, theme):
+        panel.SetBackgroundColour(wx.Colour(theme['panel_bg']))
+        panel.SetForegroundColour(wx.Colour(theme['fg_color']))
+        panel.Refresh()
+
 # Global instance
 theme_manager = ThemeManager()

@@ -2,8 +2,11 @@
 
 import platform
 import time
+import os
 
 import wx
+import wx.adv
+import json
 
 import CLIWrapper
 import Logon
@@ -21,6 +24,297 @@ def new_id():
     return wx.Window.NewControlId()
 
 
+class CustomImagePanel(wx.Panel):
+    def __init__(self, parent, theme_manager):
+        super().__init__(parent)
+        self.theme_manager = theme_manager
+        self.config = {}
+        self.load_config()
+
+        # Create scrolled window for the image
+        self.scrolled_win = wx.ScrolledWindow(self, style=wx.VSCROLL | wx.HSCROLL)
+        self.scrolled_win.SetScrollRate(10, 10)
+
+        # Static bitmap for images
+        self.static_bitmap = wx.StaticBitmap(self.scrolled_win)
+
+        # Animation control for GIFs
+        self.animation_ctrl = wx.adv.AnimationCtrl(self.scrolled_win)
+        self.animation_ctrl.Hide()
+
+        # Sizer for the scrolled window
+        scrolled_sizer = wx.BoxSizer(wx.VERTICAL)
+        scrolled_sizer.Add(self.static_bitmap, 0, wx.ALL, 5)
+        scrolled_sizer.Add(self.animation_ctrl, 0, wx.ALL, 5)
+        self.scrolled_win.SetSizer(scrolled_sizer)
+
+        # Main sizer
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(self.scrolled_win, 1, wx.EXPAND)
+        self.SetSizer(sizer)
+
+        # Drag and drop
+        self.drop_target = CustomImageDropTarget(self)
+        self.scrolled_win.SetDropTarget(self.drop_target)
+
+        # Load initial image
+        self.load_image()
+
+        # Bind events
+        self.Bind(wx.EVT_SIZE, self.on_size)
+
+    def load_config(self):
+        try:
+            with open('config.json', 'r') as f:
+                config = json.load(f)
+                self.config = {
+                    'enabled': config.get('custom_image_enabled', False),
+                    'path': config.get('custom_image_path', ''),
+                    'width': config.get('custom_image_width', 300),
+                    'height': config.get('custom_image_height', 200),
+                    'fit': config.get('custom_image_fit', True)
+                }
+        except Exception as e:
+            print(f"Error loading custom image config: {e}")
+            self.config = {'enabled': False, 'path': '', 'width': 300, 'height': 200, 'fit': True}
+
+    def save_config(self):
+        try:
+            with open('config.json', 'r') as f:
+                config = json.load(f)
+            config.update({
+                'custom_image_enabled': self.config['enabled'],
+                'custom_image_path': self.config['path'],
+                'custom_image_width': self.config['width'],
+                'custom_image_height': self.config['height'],
+                'custom_image_fit': self.config['fit']
+            })
+            with open('config.json', 'w') as f:
+                json.dump(config, f, indent=4)
+        except Exception as e:
+            print(f"Error saving custom image config: {e}")
+
+    def get_target_size(self, img):
+        if self.config['fit']:
+            client_size = self.scrolled_win.GetClientSize()
+            available_width = client_size.width - 20
+            available_height = client_size.height - 20
+            if available_width <= 0 or available_height <= 0:
+                return img.GetWidth(), img.GetHeight()
+            return available_width, available_height
+
+        width = max(self.config.get('width', img.GetWidth()), 1)
+        height = max(self.config.get('height', img.GetHeight()), 1)
+        return width, height
+
+    def load_image(self):
+        if not self.config['enabled'] or not self.config['path']:
+            self.static_bitmap.SetBitmap(wx.NullBitmap)
+            self.animation_ctrl.Stop()
+            self.animation_ctrl.Hide()
+            self.static_bitmap.Hide()
+            return
+
+        if not os.path.exists(self.config['path']):
+            wx.MessageBox(f"Image not found:\n{self.config['path']}", "Error", wx.OK | wx.ICON_ERROR)
+            self.static_bitmap.SetBitmap(wx.NullBitmap)
+            self.animation_ctrl.Stop()
+            self.animation_ctrl.Hide()
+            self.static_bitmap.Hide()
+            return
+
+        try:
+            _, ext = os.path.splitext(self.config['path'])
+            if ext.lower() == '.gif':
+                animation = wx.adv.Animation(self.config['path'])
+                if animation.IsOk():
+                    self.animation_ctrl.SetAnimation(animation)
+                    self.animation_ctrl.SetMinSize(animation.GetSize())
+                    self.scrolled_win.SetVirtualSize(animation.GetSize())
+                    self.animation_ctrl.Play()
+                    self.animation_ctrl.Show()
+                    self.static_bitmap.Hide()
+                else:
+                    # Fallback to static load if GIF isn't animated/parsable
+                    img = wx.Image(self.config['path'])
+                    if not img.IsOk():
+                        raise Exception("Invalid GIF image")
+                    target_width, target_height = self.get_target_size(img)
+                    if target_width != img.GetWidth() or target_height != img.GetHeight():
+                        img = img.Scale(target_width, target_height, wx.IMAGE_QUALITY_HIGH)
+                    bitmap = wx.Bitmap(img)
+                    self.static_bitmap.SetBitmap(bitmap)
+                    self.static_bitmap.Show()
+                    self.animation_ctrl.Stop()
+                    self.animation_ctrl.Hide()
+                    self.scrolled_win.SetVirtualSize(bitmap.GetWidth(), bitmap.GetHeight())
+            else:
+                # Load as static image
+                img = wx.Image(self.config['path'])
+                if img.IsOk():
+                    target_width, target_height = self.get_target_size(img)
+                    if target_width != img.GetWidth() or target_height != img.GetHeight():
+                        img = img.Scale(target_width, target_height, wx.IMAGE_QUALITY_HIGH)
+                    bitmap = wx.Bitmap(img)
+                    self.static_bitmap.SetBitmap(bitmap)
+                    self.static_bitmap.Show()
+                    self.animation_ctrl.Stop()
+                    self.animation_ctrl.Hide()
+                    # Set virtual size for scrolling
+                    self.scrolled_win.SetVirtualSize(bitmap.GetWidth(), bitmap.GetHeight())
+                else:
+                    raise Exception("Invalid image")
+            self.scrolled_win.Layout()
+            self.Layout()
+        except Exception as e:
+            print(f"Error loading image {self.config['path']}: {e}")
+            wx.MessageBox(f"Failed to load image: {self.config['path']}\n{e}", "Error", wx.OK | wx.ICON_ERROR)
+            self.static_bitmap.SetBitmap(wx.NullBitmap)
+            self.animation_ctrl.Stop()
+            self.animation_ctrl.Hide()
+
+    def set_image_path(self, path):
+        self.config['path'] = path
+        self.save_config()
+        self.load_image()
+
+    def toggle_enabled(self):
+        self.config['enabled'] = not self.config['enabled']
+        self.save_config()
+        self.load_image()
+
+    def apply_theme(self):
+        theme = self.theme_manager.get_theme()
+        self.theme_manager.apply_theme_to_custom_image_panel(self, theme)
+        self.theme_manager.apply_theme_to_custom_image_panel(self.scrolled_win, theme)
+
+    def on_size(self, event):
+        if self.config['fit']:
+            self.load_image()  # Reload to fit new size
+        event.Skip()
+
+
+class CustomImageDropTarget(wx.FileDropTarget):
+    def __init__(self, panel):
+        super().__init__()
+        self.panel = panel
+
+    def OnDropFiles(self, x, y, filenames):
+        if filenames:
+            path = filenames[0]
+            ext = path.lower().split('.')[-1]
+            if ext in ['png', 'jpg', 'jpeg', 'bmp', 'gif']:
+                self.panel.config['enabled'] = True
+                self.panel.set_image_path(path)
+            else:
+                wx.MessageBox("Unsupported file type. Supported: PNG, JPG, BMP, GIF", "Error", wx.OK | wx.ICON_ERROR)
+        return True
+
+
+class CustomImageDialog(wx.Dialog):
+    def __init__(self, parent, custom_panel):
+        super().__init__(parent, title="Custom Image Settings", size=(400, 300))
+        self.custom_panel = custom_panel
+        self.InitUI()
+        self.Centre()
+
+    def InitUI(self):
+        panel = wx.Panel(self)
+        vbox = wx.BoxSizer(wx.VERTICAL)
+
+        # Enable checkbox
+        self.enable_cb = wx.CheckBox(panel, label="Enable custom image display")
+        self.enable_cb.SetValue(self.custom_panel.config['enabled'])
+        self.enable_cb.Bind(wx.EVT_CHECKBOX, self.OnEnableChanged)
+        vbox.Add(self.enable_cb, 0, wx.ALL, 10)
+
+        # File selection
+        file_box = wx.StaticBox(panel, label="Image File")
+        file_sizer = wx.StaticBoxSizer(file_box, wx.HORIZONTAL)
+
+        self.file_tc = wx.TextCtrl(panel, value=self.custom_panel.config['path'])
+        browse_btn = wx.Button(panel, label="Browse...")
+        browse_btn.Bind(wx.EVT_BUTTON, self.OnBrowse)
+
+        file_sizer.Add(self.file_tc, 1, wx.ALL | wx.EXPAND, 5)
+        file_sizer.Add(browse_btn, 0, wx.ALL, 5)
+        vbox.Add(file_sizer, 0, wx.ALL | wx.EXPAND, 10)
+
+        # Dimensions
+        dim_box = wx.StaticBox(panel, label="Dimensions")
+        dim_sizer = wx.StaticBoxSizer(dim_box, wx.VERTICAL)
+
+        grid_sizer = wx.FlexGridSizer(2, 2, 5, 5)
+
+        grid_sizer.Add(wx.StaticText(panel, label="Width:"))
+        self.width_spin = wx.SpinCtrl(panel, value=str(self.custom_panel.config['width']), min=50, max=2000)
+        grid_sizer.Add(self.width_spin)
+
+        grid_sizer.Add(wx.StaticText(panel, label="Height:"))
+        self.height_spin = wx.SpinCtrl(panel, value=str(self.custom_panel.config['height']), min=50, max=2000)
+        grid_sizer.Add(self.height_spin)
+
+        dim_sizer.Add(grid_sizer, 0, wx.ALL, 5)
+
+        # Fit checkbox
+        self.fit_cb = wx.CheckBox(panel, label="Fit to panel size")
+        self.fit_cb.SetValue(self.custom_panel.config['fit'])
+        dim_sizer.Add(self.fit_cb, 0, wx.ALL, 5)
+
+        vbox.Add(dim_sizer, 0, wx.ALL | wx.EXPAND, 10)
+
+        # Buttons
+        btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        apply_btn = wx.Button(panel, id=wx.ID_OK, label="Apply")
+        apply_btn.SetDefault()
+        apply_btn.Bind(wx.EVT_BUTTON, self.OnApply)
+        cancel_btn = wx.Button(panel, id=wx.ID_CANCEL, label="Cancel")
+        cancel_btn.Bind(wx.EVT_BUTTON, self.OnCancel)
+
+        btn_sizer.Add(apply_btn, 0, wx.ALL, 5)
+        btn_sizer.Add(cancel_btn, 0, wx.ALL, 5)
+
+        vbox.Add(btn_sizer, 0, wx.ALIGN_CENTER | wx.ALL, 10)
+
+        panel.SetSizer(vbox)
+        # Initial enable/disable to reflect current state
+        self.OnEnableChanged(None)
+
+    def OnEnableChanged(self, event):
+        enabled = self.enable_cb.GetValue()
+        self.file_tc.Enable(enabled)
+        self.width_spin.Enable(enabled)
+        self.height_spin.Enable(enabled)
+        self.fit_cb.Enable(enabled)
+
+    def apply_changes(self):
+        self.custom_panel.config['enabled'] = self.enable_cb.GetValue()
+        self.custom_panel.config['path'] = self.file_tc.GetValue()
+        self.custom_panel.config['width'] = self.width_spin.GetValue()
+        self.custom_panel.config['height'] = self.height_spin.GetValue()
+        self.custom_panel.config['fit'] = self.fit_cb.GetValue()
+        self.custom_panel.save_config()
+        self.custom_panel.load_image()
+
+    def OnBrowse(self, event):
+        with wx.FileDialog(self, "Choose image file", wildcard="Image files (*.png;*.jpg;*.jpeg;*.bmp;*.gif)|*.png;*.jpg;*.jpeg;*.bmp;*.gif",
+                           style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as fileDialog:
+            if fileDialog.ShowModal() == wx.ID_CANCEL:
+                return
+            path = fileDialog.GetPath()
+            self.file_tc.SetValue(path)
+
+    def OnApply(self, event):
+        self.apply_changes()
+        if self.IsModal():
+            self.EndModal(wx.ID_OK)
+        else:
+            self.Close()
+
+    def OnCancel(self, event):
+        self.EndModal(wx.ID_CANCEL)
+
+
 def create(parent):
     return fmBuddyList(parent)
 
@@ -30,6 +324,7 @@ wxID_FMBUDDYLISTPNLBUDDYLIST = wx.ID_ANY
 wxID_FMBUDDYLISTSBBUDDYLIST = wx.ID_ANY
 wxID_FMBUDDYLISTTBBUDDYLIST = wx.ID_ANY
 wxID_FMBUDDYLISTTCBUDDYLIST = wx.ID_ANY
+wxID_FMBUDDYLISTPNLCUSTOMIMAGE = wx.ID_ANY
 
 wxID_FMBUDDYLISTMNFILEMNEXIT = new_id()
 wxID_FMBUDDYLISTMNFILEMNSIGNIN = new_id()
@@ -47,6 +342,7 @@ wxID_FMBUDDYLISTMENU1MNHELP = new_id()
 wxID_FMBUDDYLISTMNHELPMNABOUT = new_id()
 wxID_FMBUDDYLISTMNHELPMNHELP = new_id()
 wxID_FMBUDDYLISTMNHELPMNTHEMES = new_id()
+wxID_FMBUDDYLISTMNHELPMNCUSTOMIMAGE = new_id()
 
 wxID_FMBUDDYLISTTOOLBAR1MNADDCATEGORY = new_id()
 wxID_FMBUDDYLISTTOOLBAR1MNADDCOMPUTER = new_id()
@@ -83,12 +379,15 @@ class fmBuddyList(wx.Frame):
         parent.Append(wxID_FMBUDDYLISTMNHELPMNHELP, 'Help', '')
         parent.Append(wxID_FMBUDDYLISTMNHELPMNABOUT, 'About', '')
         parent.Append(wxID_FMBUDDYLISTMNHELPMNTHEMES, 'Themes', '')
+        parent.Append(wxID_FMBUDDYLISTMNHELPMNCUSTOMIMAGE, 'Custom Image', '')
         self.Bind(wx.EVT_MENU, self.OnMnHelpMnhelpMenu,
               id=wxID_FMBUDDYLISTMNHELPMNHELP)
         self.Bind(wx.EVT_MENU, self.OnMnHelpMnaboutMenu,
               id=wxID_FMBUDDYLISTMNHELPMNABOUT)
         self.Bind(wx.EVT_MENU, self.OnMnHelpMnthemesMenu,
               id=wxID_FMBUDDYLISTMNHELPMNTHEMES)
+        self.Bind(wx.EVT_MENU, self.OnMnHelpMncustomimageMenu,
+              id=wxID_FMBUDDYLISTMNHELPMNCUSTOMIMAGE)
 
     def _init_coll_mbMenu_Menus(self, parent):
         parent.Append(menu=self.mnFile, title='File')
@@ -165,12 +464,17 @@ class fmBuddyList(wx.Frame):
               style=wx.TR_HIDE_ROOT | wx.TR_NO_LINES | wx.TR_FULL_ROW_HIGHLIGHT)
         self.tcBuddyList.SetToolTip('')
 
+        # Custom Image Panel
+        self.pnlCustomImage = CustomImagePanel(parent=self, theme_manager=themes.theme_manager)
+        self.pnlCustomImage.SetMinSize((-1, 200))  # Default height
+
         self._init_coll_tbBuddyList_Tools(self.tbBuddyList)
         self._init_sizers()
         
-        # Ensure Panel fills Frame
+        # Ensure Panels fill Frame
         frameSizer = wx.BoxSizer(wx.VERTICAL)
         frameSizer.Add(self.pnlBuddyList, 1, wx.EXPAND)
+        frameSizer.Add(self.pnlCustomImage, 0, wx.EXPAND)
         self.SetSizer(frameSizer)
         self.Layout()
         self.Center()
@@ -266,6 +570,13 @@ class fmBuddyList(wx.Frame):
         dlg = ThemeDialog.ThemeDialog(self)
         if dlg.ShowModal() == wx.ID_OK:
             self.ApplyTheme()
+        dlg.Destroy()
+
+    def OnMnHelpMncustomimageMenu(self, event):
+        dlg = CustomImageDialog(self, self.pnlCustomImage)
+        if dlg.ShowModal() == wx.ID_OK:
+            # Apply theme if needed, but it's already done in load_image
+            pass
         dlg.Destroy()
 
     def PopulateBuddyList(self):
@@ -431,6 +742,9 @@ class fmBuddyList(wx.Frame):
 
         # Apply to status bar
         themes.theme_manager.apply_theme_to_statusbar(self.sbBuddyList, theme)
+
+        # Apply to custom image panel
+        self.pnlCustomImage.apply_theme()
 
         # Refresh the entire frame
         self.Refresh()
