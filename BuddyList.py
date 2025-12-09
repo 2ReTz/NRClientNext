@@ -7,6 +7,8 @@ import wx
 
 import CLIWrapper
 import Logon
+import themes
+import ThemeDialog
 
 menu_titles = ["Delete a Computer"]
 menu_title_by_id = {}
@@ -44,6 +46,7 @@ wxID_FMBUDDYLISTMENU1MNHELP = new_id()
 
 wxID_FMBUDDYLISTMNHELPMNABOUT = new_id()
 wxID_FMBUDDYLISTMNHELPMNHELP = new_id()
+wxID_FMBUDDYLISTMNHELPMNTHEMES = new_id()
 
 wxID_FMBUDDYLISTTOOLBAR1MNADDCATEGORY = new_id()
 wxID_FMBUDDYLISTTOOLBAR1MNADDCOMPUTER = new_id()
@@ -79,10 +82,13 @@ class fmBuddyList(wx.Frame):
     def _init_coll_mnHelp_Items(self, parent):
         parent.Append(wxID_FMBUDDYLISTMNHELPMNHELP, 'Help', '')
         parent.Append(wxID_FMBUDDYLISTMNHELPMNABOUT, 'About', '')
+        parent.Append(wxID_FMBUDDYLISTMNHELPMNTHEMES, 'Themes', '')
         self.Bind(wx.EVT_MENU, self.OnMnHelpMnhelpMenu,
               id=wxID_FMBUDDYLISTMNHELPMNHELP)
         self.Bind(wx.EVT_MENU, self.OnMnHelpMnaboutMenu,
               id=wxID_FMBUDDYLISTMNHELPMNABOUT)
+        self.Bind(wx.EVT_MENU, self.OnMnHelpMnthemesMenu,
+              id=wxID_FMBUDDYLISTMNHELPMNTHEMES)
 
     def _init_coll_mbMenu_Menus(self, parent):
         parent.Append(menu=self.mnFile, title='File')
@@ -176,6 +182,7 @@ class fmBuddyList(wx.Frame):
         self._init_tcBuddyList_()
         self._init_popupmenu_()
         self._init_cliwrapper_()
+        self.ApplyTheme()
 
     def _init_tcBuddyList_(self):
         isz = (16, 16)
@@ -254,6 +261,12 @@ class fmBuddyList(wx.Frame):
 
     def OnMnHelpMnaboutMenu(self, event):
         wx.MessageBox("NRClientX \n\nv0.9.10\n\nCopyrigth(C) 2010 huhu.tiger", "About NRClientX", wx.OK | wx.ICON_INFORMATION, self)
+
+    def OnMnHelpMnthemesMenu(self, event):
+        dlg = ThemeDialog.ThemeDialog(self)
+        if dlg.ShowModal() == wx.ID_OK:
+            self.ApplyTheme()
+        dlg.Destroy()
 
     def PopulateBuddyList(self):
         self.tcBuddyList.DeleteAllItems()
@@ -400,3 +413,25 @@ class fmBuddyList(wx.Frame):
             self.worker = None
             self.tcBuddyList.DeleteAllItems()
             self.SetLabel("NeoRouter Network Explorer")
+
+    def ApplyTheme(self):
+        theme = themes.theme_manager.get_theme()
+
+        # Apply to frame
+        themes.theme_manager.apply_theme_to_frame(self, theme)
+
+        # Apply to panel
+        themes.theme_manager.apply_theme_to_panel(self.pnlBuddyList, theme)
+
+        # Apply to tree control
+        themes.theme_manager.apply_theme_to_tree(self.tcBuddyList, theme)
+
+        # Apply to toolbar
+        themes.theme_manager.apply_theme_to_toolbar(self.tbBuddyList, theme)
+
+        # Apply to status bar
+        themes.theme_manager.apply_theme_to_statusbar(self.sbBuddyList, theme)
+
+        # Refresh the entire frame
+        self.Refresh()
+        self.Layout()
