@@ -1,7 +1,19 @@
 # NRClientNext
-Python 3 + wxPython 4 refresh of the NeoRouter NRClientX GUI. Includes modernized APIs, Windows/macOS/Linux support   for nrclientcmd, credential persistence, and updated toolbar/menu handling.
-Python 3 + wxPython 4 refresh of the NeoRouter NRClientX GUI. Modernized APIs, better Windows/macOS/Linux
-  compatibility for `nrclientcmd`, credential persistence, and cleaned-up toolbar/menu handling.
+
+**A modern Python 3 + wxPython 4 refresh of the NeoRouter NRClientX GUI client.**
+
+## 🚀 What's New in NRClientNext
+
+This is a complete modernization of the original [NRClientX](https://github.com/huhu-tiger/NRClientX) (2010) by huhu.tiger, bringing it from **Python 2 + wxPython 2.8** to modern standards:
+
+- ✅ **Python 3.8+ Compatible** - Migrated from legacy Python 2.x
+- ✅ **wxPython 4.2.4 (Phoenix)** - Upgraded from wxPython 2.8 classic
+- ✅ **Cross-Platform** - Enhanced Windows/macOS/Linux support with smart path detection
+- ✅ **Credential Persistence** - Auto-save/load login credentials via `connection.json`
+- ✅ **Modern APIs** - All deprecated wxPython calls updated to current standards
+- ✅ **Better Threading** - Improved subprocess management and event handling
+
+See [CHANGELOG.md](CHANGELOG.md) for complete upgrade details.
 
   ## Features
   - Python 3.8+ / wxPython 4 (Phoenix) compatible UI
@@ -26,6 +38,14 @@ Python 3 + wxPython 4 refresh of the NeoRouter NRClientX GUI. Modernized APIs, b
   1. Launch python PyNRClientX.py
   2. Sign in with your domain/username/password
   3. Buddy list populates; right-click a machine for actions from menu_*.def
+
+  ## Credits
+
+  **Original NRClientX** by [huhu.tiger](mailto:huhu.tigerx@gmail.com) (2010)  
+  Licensed under GPL - see [COPYLEFT.txt](COPYLEFT.txt)
+
+  **NRClientNext Modernization** by [2ReTz](https://github.com/2ReTz) (2025)  
+  Licensed under MIT - see [LICENSE](LICENSE)
 
   ## Notes
 
